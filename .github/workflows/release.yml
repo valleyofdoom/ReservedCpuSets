@@ -1,0 +1,47 @@
+name: Create release
+run-name: Create release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version of the program to build. This will be used for the tag and release name."
+        required: true
+
+      pre-release:
+        description: "Pre-release"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSVC environment
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Install packages
+        run: nuget restore .\ReservedCpuSets.sln
+
+      - name: Build
+        run: .\build.ps1
+
+      - name: Zip release
+        run: Compress-Archive -Path build\ReservedCpuSets -DestinationPath ReservedCpuSets.zip
+
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ inputs.version }}
+          name: ReservedCpuSets v${{ inputs.version }}
+          prerelease: ${{ inputs.pre-release }}
+          artifacts: ReservedCpuSets.zip
+          generateReleaseNotes: true

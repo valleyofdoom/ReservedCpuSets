@@ -1,8 +1,6 @@
 ﻿using Microsoft.Win32;
 
 using System;
-using System.Diagnostics;
-using System.Reflection;
 using System.Windows.Forms;
 
 namespace ReservedCpuSets {
@@ -10,28 +8,6 @@ namespace ReservedCpuSets {
 
         public MainForm() {
             InitializeComponent();
-        }
-
-        private bool IsAddedToStartup() {
-            using (var key = Registry.LocalMachine.OpenSubKey("SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Run")) {
-                return key.GetValue("ReservedCpuSets") != null;
-            }
-        }
-
-        private void AddToStartup(bool isEnabled) {
-            var entryAssembly = Assembly.GetEntryAssembly();
-
-            using (var key = Registry.LocalMachine.OpenSubKey("SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Run", true)) {
-                if (isEnabled) {
-                    key.SetValue("ReservedCpuSets", $"\"{entryAssembly.Location}\" --load-cpusets --timeout 10");
-                } else {
-                    try {
-                        key.DeleteValue("ReservedCpuSets");
-                    } catch (ArgumentException) {
-                        // ignore error if the key does not exist
-                    }
-                }
-            }
         }
 
         private bool IsAllCPUsChecked() {
@@ -71,10 +47,10 @@ namespace ReservedCpuSets {
             }
 
             // check if program is set to run at startup
-            addToStartup.Checked = IsAddedToStartup();
+            addToStartup.Checked = Utils.IsAddedToStartup();
 
             // 19044 is Windows 10 version 21H2
-            if (!IsAddedToStartup() && Utils.GetWindowsBuildNumber() < 19044) {
+            if (!Utils.IsAddedToStartup() && Utils.GetWindowsBuildNumber() < 19044) {
                 _ = MessageBox.Show("On 21H1 and below, the configuration must be applied on a per-boot basis.\nPlace the program somewhere safe and enable \"Add To Startup\" in the File menu", "ReservedCpuSets", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
@@ -102,8 +78,8 @@ namespace ReservedCpuSets {
                 }
 
                 // since there are no changes to apply at startup, the program can be removed from starting at boot
-                if (IsAddedToStartup()) {
-                    AddToStartup(false);
+                if (Utils.IsAddedToStartup()) {
+                    Utils.AddToStartup(false);
                 }
             } else {
                 var bytes = BitConverter.GetBytes(affinity);
@@ -145,7 +121,7 @@ namespace ReservedCpuSets {
         }
 
         private void AddToStartupClick(object sender, EventArgs e) {
-            AddToStartup(addToStartup.Checked);
+            Utils.AddToStartup(addToStartup.Checked);
         }
 
         private void DonateToolStripMenuItem_Click(object sender, EventArgs e) {
